@@ -73,10 +73,8 @@ interface Particle {
 interface GameStats {
   totalClicks: number;
   accurateClicks: number;
-  averageReactionTime: number;
-  missedTargets: number;
   totalDistance: number;
-  lastMousePosition: { x: number; y: number };
+  averageReactionTime: number;
 }
 
 type SessionDuration = 15 | 30 | 60 | 120 | 300 | 600;
@@ -125,10 +123,8 @@ function App() {
   const [gameStats, setGameStats] = useState<GameStats>({
     totalClicks: 0,
     accurateClicks: 0,
-    averageReactionTime: 0,
-    missedTargets: 0,
     totalDistance: 0,
-    lastMousePosition: { x: 0, y: 0 },
+    averageReactionTime: 0
   })
   const [showSummary, setShowSummary] = useState(false)
   const canvasRef = useRef<HTMLDivElement>(null)
@@ -143,6 +139,7 @@ function App() {
   const lastMousePosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
   const [showLeaderboard, setShowLeaderboard] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
+  const hasGameBeenSaved = useRef(false)
 
   // Initialize sound effects
   useEffect(() => {
@@ -411,47 +408,74 @@ function App() {
     }
   };
 
-  const startGame = () => {
-    setIsGameStarted(true)
-    setScore(0)
-    setTimeLeft(sessionDuration)
-    setShowSummary(false)
-    setGameStats({
-      totalClicks: 0,
-      accurateClicks: 0,
-      averageReactionTime: 0,
-      missedTargets: 0,
-      totalDistance: 0,
-      lastMousePosition: { x: 0, y: 0 },
-    })
-    totalReactionTimeRef.current = 0
-    generateTarget()
-
+  const startTimer = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+    
     timerRef.current = window.setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
-          endGame();
+          // Clear the interval first
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+          }
+          // Then trigger game end with save
+          endGame(true);
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
-  }
+  };
 
-  const endGame = () => {
+  const startGame = () => {
+    setScore(0);
+    setTimeLeft(sessionDuration);
+    setIsGameStarted(true);
+    setShowSummary(false);
+    setGameStats({
+      totalClicks: 0,
+      accurateClicks: 0,
+      totalDistance: 0,
+      averageReactionTime: 0
+    });
+    totalReactionTimeRef.current = 0;
+    hasGameBeenSaved.current = false;  // Reset the save flag when starting new game
+    generateTarget();
+    startTimer();
+  };
+
+  const endGame = (shouldSave: boolean = false) => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
     }
-    setIsGameStarted(false)
-    setTargets([])
-    saveGameRecord()
-    setShowSummary(true)
-  }
+    setIsGameStarted(false);
+    setTargets([]);
+    
+    // Save if explicitly requested and hasn't been saved yet
+    if (shouldSave && !hasGameBeenSaved.current) {
+      console.log('Saving game record...');
+      console.log('Current stats:', {
+        score,
+        gameStats,
+        sessionDuration,
+        timeLeft
+      });
+      saveGameRecord();
+      hasGameBeenSaved.current = true;
+    }
+    setShowSummary(true);
+  };
 
   const stopGame = () => {
-    endGame();
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+    setIsGameStarted(false);
+    setTargets([]);
     setShowSummary(false);
-  }
+  };
 
   useEffect(() => {
     if (isGameStarted) {
@@ -482,58 +506,110 @@ function App() {
   }
 
   const saveGameRecord = () => {
-    const gameRecord: GameRecord = {
-      id: Date.now().toString(),
-      date: new Date().toISOString(),
-      score,
-      accuracy: gameStats.totalClicks > 0 ? (gameStats.accurateClicks / gameStats.totalClicks) * 100 : 0,
-      averageReactionTime: gameStats.averageReactionTime,
-      totalDistance: gameStats.totalDistance,
-      clicksPerSecond: gameStats.accurateClicks / sessionDuration,
-      sessionDuration,
-      totalClicks: gameStats.totalClicks,
-      accurateClicks: gameStats.accurateClicks
-    };
+    console.log('Attempting to save game record...');
+    // Only save if there was actual gameplay
+    if (score > 0 || gameStats.totalClicks > 0) {
+      const gameRecord: GameRecord = {
+        id: Date.now().toString(),
+        date: new Date().toISOString(),
+        score,
+        accuracy: gameStats.totalClicks > 0 ? (gameStats.accurateClicks / gameStats.totalClicks) * 100 : 0,
+        averageReactionTime: gameStats.accurateClicks > 0 ? totalReactionTimeRef.current / gameStats.accurateClicks : 0,
+        totalDistance: Math.round(gameStats.totalDistance),
+        clicksPerSecond: sessionDuration > 0 ? gameStats.accurateClicks / sessionDuration : 0,
+        sessionDuration,
+        totalClicks: gameStats.totalClicks,
+        accurateClicks: gameStats.accurateClicks
+      };
 
-    // Get existing records
-    const existingRecords = JSON.parse(localStorage.getItem('gameRecords') || '[]') as GameRecord[];
-    
-    // Add new record
-    const updatedRecords = [...existingRecords, gameRecord];
-    
-    // Sort by score in descending order
-    updatedRecords.sort((a, b) => b.score - a.score);
-    
-    // Store in localStorage
-    localStorage.setItem('gameRecords', JSON.stringify(updatedRecords));
+      try {
+        // Get existing records
+        let existingRecords: GameRecord[] = [];
+        const storedRecords = localStorage.getItem('gameRecords');
+        
+        if (storedRecords) {
+          try {
+            existingRecords = JSON.parse(storedRecords);
+            // Validate that it's an array
+            if (!Array.isArray(existingRecords)) {
+              existingRecords = [];
+            }
+          } catch (e) {
+            console.error('Error parsing stored records:', e);
+            existingRecords = [];
+          }
+        }
+        
+        // Add new record
+        existingRecords.push(gameRecord);
+        
+        // Sort by date in descending order (most recent first)
+        existingRecords.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        
+        // Store in localStorage
+        localStorage.setItem('gameRecords', JSON.stringify(existingRecords));
+        
+        console.log('Game record saved successfully:', gameRecord);
+        console.log('Total records:', existingRecords.length);
+      } catch (error) {
+        console.error('Error saving game record:', error);
+      }
+    } else {
+      console.log('No game record saved - no actual gameplay detected');
+      console.log('Current score:', score);
+      console.log('Total clicks:', gameStats.totalClicks);
+    }
   };
 
   const getTopRecords = (limit: number = 10): GameRecord[] => {
-    const records = JSON.parse(localStorage.getItem('gameRecords') || '[]') as GameRecord[];
-    return records.slice(0, limit);
+    try {
+      const storedRecords = localStorage.getItem('gameRecords');
+      if (!storedRecords) return [];
+
+      const records = JSON.parse(storedRecords);
+      if (!Array.isArray(records)) return [];
+
+      return records
+        .sort((a, b) => b.score - a.score)
+        .slice(0, limit);
+    } catch (e) {
+      console.error('Error getting top records:', e);
+      return [];
+    }
   };
 
   const getAllRecords = (): GameRecord[] => {
-    return JSON.parse(localStorage.getItem('gameRecords') || '[]') as GameRecord[];
+    try {
+      const storedRecords = localStorage.getItem('gameRecords');
+      if (!storedRecords) return [];
+
+      const records = JSON.parse(storedRecords);
+      if (!Array.isArray(records)) return [];
+
+      // Sort by date in descending order (most recent first)
+      return records.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    } catch (e) {
+      console.error('Error getting all records:', e);
+      return [];
+    }
   };
 
   const getChartData = () => {
-    const records = getAllRecords();
-    const lastTenGames = records.slice(-10);
+    const records = getAllRecords().slice(0, 10).reverse(); // Get most recent 10 games in chronological order
 
     return {
-      labels: lastTenGames.map(record => new Date(record.date).toLocaleDateString()),
+      labels: records.map(record => new Date(record.date).toLocaleDateString()),
       datasets: [
         {
           label: 'Score',
-          data: lastTenGames.map(record => record.score),
+          data: records.map(record => record.score),
           borderColor: '#00ff9d',
           backgroundColor: 'rgba(0, 255, 157, 0.5)',
           tension: 0.4
         },
         {
           label: 'Accuracy (%)',
-          data: lastTenGames.map(record => record.accuracy),
+          data: records.map(record => record.accuracy),
           borderColor: '#ff9d00',
           backgroundColor: 'rgba(255, 157, 0, 0.5)',
           tension: 0.4
@@ -641,13 +717,15 @@ function App() {
                     <div className="stat-card">
                       <h3>Best Score</h3>
                       <div className="value">
-                        {Math.max(...getAllRecords().map(r => r.score))}
+                        {getAllRecords().length > 0 ? Math.max(...getAllRecords().map(r => r.score)) : 0}
                       </div>
                     </div>
                     <div className="stat-card">
                       <h3>Average Accuracy</h3>
                       <div className="value">
-                        {(getAllRecords().reduce((acc, r) => acc + r.accuracy, 0) / getAllRecords().length).toFixed(1)}%
+                        {getAllRecords().length > 0 
+                          ? (getAllRecords().reduce((acc, r) => acc + r.accuracy, 0) / getAllRecords().length).toFixed(1)
+                          : '0.0'}%
                       </div>
                     </div>
                     <div className="stat-card">

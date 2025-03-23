@@ -6,6 +6,16 @@ interface Target {
   x: number;
   y: number;
   createdAt: number;
+  isHit?: boolean;
+}
+
+interface Particle {
+  id: number;
+  x: number;
+  y: number;
+  tx: number;
+  ty: number;
+  size: number;
 }
 
 interface GameStats {
@@ -58,27 +68,67 @@ function App() {
   const canvasRef = useRef<HTMLDivElement>(null)
   const timerRef = useRef<number>()
   const totalReactionTimeRef = useRef(0)
+  const [particles, setParticles] = useState<Particle[]>([])
+  const [isIntenseMode, setIsIntenseMode] = useState(false)
 
   const generateTarget = () => {
     if (!canvasRef.current) return;
+
+    // Don't generate more targets if we already have 3
+    if (targets.length >= 3) return;
 
     const canvas = canvasRef.current;
     const canvasRect = canvas.getBoundingClientRect();
     const targetSize = Math.min(50, window.innerWidth * 0.06);
     const margin = targetSize / 2;
 
-    const x = Math.random() * (canvasRect.width - targetSize) + margin;
-    const y = Math.random() * (canvasRect.height - targetSize) + margin;
+    // In intense mode, maybe generate an extra target (max 2 at once)
+    const targetsToGenerate = isIntenseMode && Math.random() > 0.5 ? 2 : 1;
     
-    const newTarget: Target = {
-      id: Date.now(),
-      x,
-      y,
-      createdAt: Date.now(),
+    const newTargets: Target[] = [];
+    for (let i = 0; i < targetsToGenerate; i++) {
+      const x = Math.random() * (canvasRect.width - targetSize) + margin;
+      const y = Math.random() * (canvasRect.height - targetSize) + margin;
+      
+      newTargets.push({
+        id: Date.now() + i,
+        x,
+        y,
+        createdAt: Date.now(),
+      });
     }
     
-    setTargets(prev => [...prev, newTarget])
+    setTargets(prev => {
+      // Make sure we don't exceed 3 targets
+      const combined = [...prev, ...newTargets];
+      return combined.slice(0, 3);
+    });
   }
+
+  const createParticles = (x: number, y: number) => {
+    const particleCount = isIntenseMode ? 16 : 12;
+    const newParticles: Particle[] = [];
+    
+    for (let i = 0; i < particleCount; i++) {
+      const angle = (i * 360) / particleCount;
+      const velocity = isIntenseMode ? 150 + Math.random() * 100 : 100 + Math.random() * 50;
+      const size = 3 + Math.random() * 3;
+      
+      newParticles.push({
+        id: Date.now() + i,
+        x,
+        y,
+        tx: Math.cos(angle * Math.PI / 180) * velocity,
+        ty: Math.sin(angle * Math.PI / 180) * velocity,
+        size,
+      });
+    }
+    
+    setParticles(prev => [...prev, ...newParticles]);
+    setTimeout(() => {
+      setParticles(prev => prev.filter(p => !newParticles.includes(p)));
+    }, isIntenseMode ? 400 : 800);
+  };
 
   const handleTargetClick = (targetId: number) => {
     const target = targets.find(t => t.id === targetId);
@@ -91,10 +141,22 @@ function App() {
         accurateClicks: prev.accurateClicks + 1,
         averageReactionTime: totalReactionTimeRef.current / (prev.accurateClicks + 1)
       }));
-    }
 
-    setTargets(prev => prev.filter(target => target.id !== targetId))
-    setScore(prev => prev + 1)
+      // Create explosion effect and mark target as hit
+      createParticles(target.x, target.y);
+      setTargets(prev => prev.map(t => 
+        t.id === targetId ? { ...t, isHit: true } : t
+      ));
+      
+      // Remove hit target and generate new one immediately
+      setTimeout(() => {
+        setTargets(prev => prev.filter(t => t.id !== targetId));
+        setScore(prev => prev + 1);
+      }, isIntenseMode ? 300 : 500);
+
+      // Generate next target immediately
+      generateTarget();
+    }
   }
 
   const handleCanvasClick = (e: React.MouseEvent) => {
@@ -170,6 +232,14 @@ function App() {
     endGame();
     setShowSummary(false);
   }
+
+  useEffect(() => {
+    if (isGameStarted) {
+      // Check if we're in the last 25% of the game
+      const intenseModeThreshold = sessionDuration * 0.75;
+      setIsIntenseMode(timeLeft <= intenseModeThreshold);
+    }
+  }, [timeLeft, sessionDuration, isGameStarted]);
 
   useEffect(() => {
     if (isGameStarted && targets.length === 0) {
@@ -307,12 +377,26 @@ function App() {
                 {targets.map(target => (
                   <div
                     key={target.id}
-                    className="target"
+                    className={`target ${target.isHit ? 'hit' : ''}`}
                     style={{
                       left: `${target.x}px`,
                       top: `${target.y}px`
                     }}
                     onClick={() => handleTargetClick(target.id)}
+                  />
+                ))}
+                {particles.map(particle => (
+                  <div
+                    key={particle.id}
+                    className="particle"
+                    style={{
+                      left: `${particle.x}px`,
+                      top: `${particle.y}px`,
+                      width: `${particle.size}px`,
+                      height: `${particle.size}px`,
+                      '--tx': `${particle.tx}px`,
+                      '--ty': `${particle.ty}px`,
+                    } as React.CSSProperties}
                   />
                 ))}
               </div>

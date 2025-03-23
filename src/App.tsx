@@ -825,7 +825,7 @@ function App() {
                   </button>
                 </div>
                 <button className="start-button" onClick={startGame}>Start Game</button>
-              </div>
+      </div>
             )}
           </>
         ) : (
@@ -833,7 +833,7 @@ function App() {
             <div className="game-stats">
               <button onClick={stopGame} className="stop-button">
                 Stop Game
-              </button>
+        </button>
               <div className="live-stats">
                 <div className="stat">Score: {score}</div>
                 <div className="stat">Time: {formatTime(timeLeft)}</div>

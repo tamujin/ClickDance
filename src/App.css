@@ -1,0 +1,202 @@
+.app-container {
+  max-width: 1280px;
+  height: 100vh;
+  margin: 0 auto;
+  padding: 1rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+h1 {
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  color: #00ff9d;
+  margin-bottom: 1rem;
+  position: relative;
+}
+
+.settings-panel {
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: rgba(10, 10, 21, 0.8);
+  border: 1px solid #00ff9d;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  width: 100%;
+  max-width: 800px;
+  box-shadow: 0 0 20px rgba(0, 255, 157, 0.2);
+  backdrop-filter: blur(10px);
+}
+
+.cursor-select {
+  padding: 0.5rem;
+  font-size: 1rem;
+  border-radius: 4px;
+  background-color: rgba(10, 10, 21, 0.8);
+  color: #00ff9d;
+  border: 1px solid #00ff9d;
+  cursor: pointer;
+  outline: none;
+  font-family: 'Orbitron', sans-serif;
+}
+
+.cursor-select:focus {
+  border-color: #00ff9d;
+  box-shadow: 0 0 10px rgba(0, 255, 157, 0.5);
+}
+
+.cursor-select option {
+  background-color: #0a0a15;
+  color: #00ff9d;
+}
+
+label {
+  color: #00ff9d;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.game-area {
+  width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  min-height: 0; /* Important for flex container */
+}
+
+.play-area {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+  min-height: 0; /* Important for flex container */
+}
+
+.game-canvas {
+  width: min(800px, 90vw);
+  height: min(600px, 70vh);
+  background: rgba(10, 10, 21, 0.8);
+  border: 2px solid #00ff9d;
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+  margin: 0 auto;
+  box-shadow: 0 0 30px rgba(0, 255, 157, 0.2);
+  backdrop-filter: blur(10px);
+}
+
+.game-canvas::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, rgba(0, 255, 157, 0.1) 0%, transparent 100%);
+  pointer-events: none;
+}
+
+.game-stats {
+  width: 100%;
+  max-width: min(800px, 90vw);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  margin: 0 auto;
+  background: rgba(10, 10, 21, 0.8);
+  border: 1px solid #00ff9d;
+  border-radius: 4px;
+  box-shadow: 0 0 20px rgba(0, 255, 157, 0.2);
+}
+
+.score {
+  font-size: 1.5rem;
+  color: #00ff9d;
+  font-weight: bold;
+  text-shadow: 0 0 10px rgba(0, 255, 157, 0.5);
+  font-family: 'Orbitron', sans-serif;
+}
+
+.target {
+  position: absolute;
+  width: min(50px, 6vw);
+  height: min(50px, 6vw);
+  background: radial-gradient(circle at center, #00ff9d 0%, rgba(0, 255, 157, 0.5) 100%);
+  border-radius: 50%;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  transition: all 0.2s ease-out;
+  box-shadow: 0 0 20px rgba(0, 255, 157, 0.5);
+}
+
+.target::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: transparent;
+  border: 2px solid #00ff9d;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+.target:hover {
+  transform: translate(-50%, -50%) scale(1.1);
+  background: radial-gradient(circle at center, #00ffbb 0%, rgba(0, 255, 187, 0.5) 100%);
+  box-shadow: 0 0 30px rgba(0, 255, 157, 0.8);
+}
+
+.start-button,
+.stop-button {
+  padding: 0.8em 1.6em;
+  border-radius: 4px;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: 'Orbitron', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.start-button {
+  background-color: rgba(0, 255, 157, 0.1);
+  color: #00ff9d;
+  border: 1px solid #00ff9d;
+}
+
+.stop-button {
+  background-color: rgba(255, 70, 70, 0.1);
+  color: #ff4646;
+  border: 1px solid #ff4646;
+}
+
+.start-button:hover {
+  box-shadow: 0 0 20px rgba(0, 255, 157, 0.5);
+}
+
+.stop-button:hover {
+  box-shadow: 0 0 20px rgba(255, 70, 70, 0.5);
+}

@@ -452,7 +452,7 @@ function App() {
     }
     setIsGameStarted(false);
     setTargets([]);
-    
+
     // Save if explicitly requested and hasn't been saved yet
     if (shouldSave && !hasGameBeenSaved.current) {
       console.log('Saving game record...');
@@ -464,6 +464,8 @@ function App() {
       });
       saveGameRecord();
       hasGameBeenSaved.current = true;
+    } else {
+      console.log('Game ended without saving. Check conditions.');
     }
     setShowSummary(true);
   };
@@ -825,7 +827,7 @@ function App() {
                   </button>
                 </div>
                 <button className="start-button" onClick={startGame}>Start Game</button>
-      </div>
+              </div>
             )}
           </>
         ) : (
@@ -833,7 +835,7 @@ function App() {
             <div className="game-stats">
               <button onClick={stopGame} className="stop-button">
                 Stop Game
-        </button>
+              </button>
               <div className="live-stats">
                 <div className="stat">Score: {score}</div>
                 <div className="stat">Time: {formatTime(timeLeft)}</div>
